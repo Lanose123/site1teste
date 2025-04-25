@@ -1,0 +1,9 @@
+[
+  {
+    "usuario": "admin",
+    "senha": "$2b$12$KdV7df2uHziGVpZ.vT5wz.khGHkk.YqNe/7szQ2V0XmwgtCuVXI1a",  # Senha criptografada
+    "email": "admin@example.com",
+    "telefone": "(11) 99999-9999",
+    "permissao": "admin"  # Definindo um campo de permissão
+  }
+]
