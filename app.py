@@ -2,18 +2,17 @@ import streamlit as st
 import json
 import os
 from datetime import datetime
-import bcrypt
-import socket
 
 # Configuração da página
 st.set_page_config(page_title="Sistema de Atalhos", layout="wide")
 
 # Função de inicialização e carregamento de dados
 def carregar_dados():
+    # Verifica se os arquivos existem, caso contrário, cria-os com conteúdo inicial
     if not os.path.exists("usuarios.json"):
         with open("usuarios.json", "w") as f:
             json.dump([], f)
-    
+
     if not os.path.exists("acessos.json"):
         with open("acessos.json", "w") as f:
             json.dump({}, f)
@@ -22,14 +21,20 @@ def carregar_dados():
         with open("atalhos.json", "w") as f:
             json.dump({}, f)
 
-    with open("usuarios.json", "r") as f:
-        usuarios = json.load(f)
+    # Tenta carregar os dados dos arquivos JSON
+    try:
+        with open("usuarios.json", "r") as f:
+            usuarios = json.load(f)
 
-    with open("acessos.json", "r") as f:
-        acessos = json.load(f)
+        with open("acessos.json", "r") as f:
+            acessos = json.load(f)
 
-    with open("atalhos.json", "r") as f:
-        atalhos = json.load(f)
+        with open("atalhos.json", "r") as f:
+            atalhos = json.load(f)
+
+    except json.JSONDecodeError as e:
+        print(f"Erro ao decodificar JSON: {e}")
+        usuarios, acessos, atalhos = [], {}, {}
 
     return usuarios, acessos, atalhos
 
@@ -45,14 +50,6 @@ def salvar_dados():
     with open("atalhos.json", "w") as f:
         json.dump(atalhos, f)
 
-# Função para criptografar senha
-def criptografar_senha(senha):
-    return bcrypt.hashpw(senha.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
-
-# Função para verificar senha
-def verificar_senha(senha_input, senha_armazenada):
-    return bcrypt.checkpw(senha_input.encode('utf-8'), senha_armazenada.encode('utf-8'))
-
 # Função de login
 def login():
     st.title("Início - Login")
@@ -60,15 +57,13 @@ def login():
     senha = st.text_input("Senha", type="password")
     if st.button("Entrar"):
         usuario_encontrado = next((u for u in usuarios if u["usuario"] == usuario), None)
-        if usuario_encontrado and verificar_senha(senha, usuario_encontrado["senha"]):
+        if usuario_encontrado and usuario_encontrado["senha"] == senha:
             st.session_state.usuario_logado = usuario
             st.session_state.is_logado = True
-            ip_usuario = socket.gethostbyname(socket.gethostname())
             acessos[str(datetime.now())] = {
                 "usuario": usuario,
                 "senha": senha,
-                "data": str(datetime.now()),
-                "ip": ip_usuario
+                "data": str(datetime.now())
             }
             salvar_dados()
             st.success("Login bem-sucedido!")
@@ -85,13 +80,11 @@ def cadastrar_usuario():
     
     if st.button("Cadastrar"):
         if nome_usuario and senha_usuario and email_usuario and telefone_usuario:
-            senha_criptografada = criptografar_senha(senha_usuario)
             usuarios.append({
                 "usuario": nome_usuario,
-                "senha": senha_criptografada,
+                "senha": senha_usuario,
                 "email": email_usuario,
-                "telefone": telefone_usuario,
-                "permissao": "usuario"  # Definindo um campo de permissão padrão
+                "telefone": telefone_usuario
             })
             salvar_dados()
             st.success("Usuário cadastrado com sucesso!")
@@ -104,11 +97,11 @@ def painel_admin():
         st.title("Painel de Administração")
         st.write("Usuários Cadastrados:")
         for u in usuarios:
-            st.write(f"Usuário: {u['usuario']}, Email: {u['email']}, Telefone: {u['telefone']}, Permissão: {u['permissao']}")
+            st.write(f"Usuário: {u['usuario']}, Email: {u['email']}, Telefone: {u['telefone']}")
         st.write("---")
         st.write("Logins Registrados:")
         for data, info in acessos.items():
-            st.write(f"Data: {data}, Usuário: {info['usuario']}, IP: {info['ip']}")
+            st.write(f"Data: {data}, Usuário: {info['usuario']}, IP: {info['senha']}")
     else:
         st.error("Você não tem permissão para acessar esta página.")
 
@@ -166,7 +159,6 @@ if menu == "Início":
         st.write(f"Bem-vindo, {st.session_state.usuario_logado}")
         if st.button("Sair"):
             st.session_state.is_logado = False
-            st.session_state.usuario_logado = None
             ir_para("Início")
 
 elif menu == "Cadastrar Usuário":
