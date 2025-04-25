@@ -1,86 +1,182 @@
 import streamlit as st
+import json
+import os
+from datetime import datetime
+import bcrypt
+import socket
 
+# Configuração da página
 st.set_page_config(page_title="Sistema de Atalhos", layout="wide")
 
-# Inicialização
-if "pagina" not in st.session_state:
-    st.session_state.pagina = "Início"
-if "atalhos" not in st.session_state:
-    st.session_state.atalhos = {}
+# Função de inicialização e carregamento de dados
+def carregar_dados():
+    if not os.path.exists("usuarios.json"):
+        with open("usuarios.json", "w") as f:
+            json.dump([], f)
+    
+    if not os.path.exists("acessos.json"):
+        with open("acessos.json", "w") as f:
+            json.dump({}, f)
 
-# Navegação entre páginas
-def ir_para(pagina):
-    st.session_state.pagina = pagina
+    if not os.path.exists("atalhos.json"):
+        with open("atalhos.json", "w") as f:
+            json.dump({}, f)
 
-# Função da barra superior
-def mostrar_menu():
-    st.markdown("---")
-    cols = st.columns(4)
-    if cols[0].button("🏠 Início", key="nav_inicio"):
-        ir_para("Início")
-    if cols[1].button("📝 Gerenciar Textos", key="nav_textos"):
-        ir_para("Textos")
-    if cols[2].button("💼 Planos", key="nav_planos"):
-        ir_para("Planos")
-    if cols[3].button("📞 Suporte", key="nav_suporte"):
-        ir_para("Suporte")
-    st.markdown("---")
+    with open("usuarios.json", "r") as f:
+        usuarios = json.load(f)
 
-# Mostrar menu
-mostrar_menu()
+    with open("acessos.json", "r") as f:
+        acessos = json.load(f)
 
-# CONTEÚDO DAS PÁGINAS
-if st.session_state.pagina == "Início":
-    st.title("Bem-vindo ao Sistema de Atalhos")
-    st.write("Escolha uma das opções abaixo:")
-    if st.button("📝 Gerenciar Textos", key="home_textos"):
-        ir_para("Textos")
-    if st.button("💼 Ver Planos", key="home_planos"):
-        ir_para("Planos")
-    if st.button("📞 Suporte", key="home_suporte"):
-        ir_para("Suporte")
+    with open("atalhos.json", "r") as f:
+        atalhos = json.load(f)
 
-elif st.session_state.pagina == "Textos":
+    return usuarios, acessos, atalhos
+
+# Carregar os dados
+usuarios, acessos, atalhos = carregar_dados()
+
+# Função para salvar os dados atualizados
+def salvar_dados():
+    with open("usuarios.json", "w") as f:
+        json.dump(usuarios, f)
+    with open("acessos.json", "w") as f:
+        json.dump(acessos, f)
+    with open("atalhos.json", "w") as f:
+        json.dump(atalhos, f)
+
+# Função para criptografar senha
+def criptografar_senha(senha):
+    return bcrypt.hashpw(senha.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+
+# Função para verificar senha
+def verificar_senha(senha_input, senha_armazenada):
+    return bcrypt.checkpw(senha_input.encode('utf-8'), senha_armazenada.encode('utf-8'))
+
+# Função de login
+def login():
+    st.title("Início - Login")
+    usuario = st.text_input("Usuário")
+    senha = st.text_input("Senha", type="password")
+    if st.button("Entrar"):
+        usuario_encontrado = next((u for u in usuarios if u["usuario"] == usuario), None)
+        if usuario_encontrado and verificar_senha(senha, usuario_encontrado["senha"]):
+            st.session_state.usuario_logado = usuario
+            st.session_state.is_logado = True
+            ip_usuario = socket.gethostbyname(socket.gethostname())
+            acessos[str(datetime.now())] = {
+                "usuario": usuario,
+                "senha": senha,
+                "data": str(datetime.now()),
+                "ip": ip_usuario
+            }
+            salvar_dados()
+            st.success("Login bem-sucedido!")
+        else:
+            st.error("Usuário ou senha inválidos.")
+
+# Função de cadastro
+def cadastrar_usuario():
+    st.title("Cadastro de Novo Usuário")
+    nome_usuario = st.text_input("Nome de Usuário")
+    senha_usuario = st.text_input("Senha", type="password")
+    email_usuario = st.text_input("Email")
+    telefone_usuario = st.text_input("Telefone")
+    
+    if st.button("Cadastrar"):
+        if nome_usuario and senha_usuario and email_usuario and telefone_usuario:
+            senha_criptografada = criptografar_senha(senha_usuario)
+            usuarios.append({
+                "usuario": nome_usuario,
+                "senha": senha_criptografada,
+                "email": email_usuario,
+                "telefone": telefone_usuario,
+                "permissao": "usuario"  # Definindo um campo de permissão padrão
+            })
+            salvar_dados()
+            st.success("Usuário cadastrado com sucesso!")
+        else:
+            st.error("Todos os campos devem ser preenchidos.")
+
+# Função de exibição de painel de admin
+def painel_admin():
+    if st.session_state.usuario_logado == "admin":
+        st.title("Painel de Administração")
+        st.write("Usuários Cadastrados:")
+        for u in usuarios:
+            st.write(f"Usuário: {u['usuario']}, Email: {u['email']}, Telefone: {u['telefone']}, Permissão: {u['permissao']}")
+        st.write("---")
+        st.write("Logins Registrados:")
+        for data, info in acessos.items():
+            st.write(f"Data: {data}, Usuário: {info['usuario']}, IP: {info['ip']}")
+    else:
+        st.error("Você não tem permissão para acessar esta página.")
+
+# Função de exibição e manipulação de atalhos
+def gerenciar_atalhos():
     st.title("Gerenciar Atalhos de Texto")
-
     st.subheader("Atalhos atuais:")
-    if st.session_state.atalhos:
-        for tecla, texto in st.session_state.atalhos.items():
+    if atalhos:
+        for tecla, texto in atalhos.items():
             st.markdown(f"**{tecla}** → {texto}")
     else:
         st.write("Nenhum atalho cadastrado.")
-
+    
     st.subheader("Adicionar novo atalho")
-    nova_tecla = st.text_input("Tecla", key="nova_tecla")
-    novo_texto = st.text_input("Texto", key="novo_texto")
-    if st.button("Adicionar", key="adicionar_atalho"):
+    nova_tecla = st.text_input("Tecla")
+    novo_texto = st.text_input("Texto")
+    if st.button("Adicionar"):
         if nova_tecla and novo_texto:
-            st.session_state.atalhos[nova_tecla] = novo_texto
+            atalhos[nova_tecla] = novo_texto
+            salvar_dados()
             st.success(f"Atalho '{nova_tecla}' adicionado!")
 
     st.subheader("Remover atalho")
-    if st.session_state.atalhos:
-        tecla_remover = st.selectbox("Escolha a tecla", list(st.session_state.atalhos.keys()), key="tecla_remover")
-        if st.button("Remover", key="remover_atalho"):
-            del st.session_state.atalhos[tecla_remover]
+    if atalhos:
+        tecla_remover = st.selectbox("Escolha a tecla", options=list(atalhos.keys()))
+        if st.button("Remover"):
+            del atalhos[tecla_remover]
+            salvar_dados()
             st.success(f"Atalho '{tecla_remover}' removido!")
 
-    if st.button("🔙 Voltar para o Início", key="voltar_textos"):
-        ir_para("Início")
+# Função para navegação
+def ir_para(pagina):
+    st.session_state.pagina = pagina
 
-elif st.session_state.pagina == "Planos":
-    st.title("Plano Atual")
-    st.info("Seu plano: **Grátis**")
-    st.markdown("Em breve: upgrades e mais funcionalidades!")
+# Controle de navegação
+if "pagina" not in st.session_state:
+    st.session_state.pagina = "Início"
+if "is_logado" not in st.session_state:
+    st.session_state.is_logado = False
+if "usuario_logado" not in st.session_state:
+    st.session_state.usuario_logado = None
 
-    if st.button("🔙 Voltar para o Início", key="voltar_planos"):
-        ir_para("Início")
+# Barra de navegação
+st.sidebar.title("Menu")
+menu = st.sidebar.radio("Navegar:", ["Início", "Cadastrar Usuário", "Login", "Admin", "Gerenciar Textos"])
 
-elif st.session_state.pagina == "Suporte":
-    st.title("Suporte")
-    st.markdown("Entre em contato conosco:")
-    st.markdown("📧 Email: suporte@example.com")
-    st.markdown("📞 Telefone: (11) 99999-9999")
+if menu == "Início":
+    if not st.session_state.is_logado:
+        st.title("Bem-vindo ao Sistema de Atalhos!")
+        if st.button("Login"):
+            ir_para("Login")
+        if st.button("Cadastrar"):
+            ir_para("Cadastrar Usuário")
+    else:
+        st.write(f"Bem-vindo, {st.session_state.usuario_logado}")
+        if st.button("Sair"):
+            st.session_state.is_logado = False
+            st.session_state.usuario_logado = None
+            ir_para("Início")
 
-    if st.button("🔙 Voltar para o Início", key="voltar_suporte"):
-        ir_para("Início")
+elif menu == "Cadastrar Usuário":
+    cadastrar_usuario()
+
+elif menu == "Login":
+    login()
+
+elif menu == "Admin":
+    painel_admin()
+
+elif menu == "Gerenciar Textos":
+    gerenciar_atalhos()
