@@ -8,29 +8,28 @@ if "pagina" not in st.session_state:
 if "atalhos" not in st.session_state:
     st.session_state.atalhos = {}
 
-# Função para mudar de página (sem rerun)
+# Navegação entre páginas
 def ir_para(pagina):
     st.session_state.pagina = pagina
 
-# Barra de navegação
-st.markdown("---")
-col1, col2, col3, col4 = st.columns(4)
-with col1:
-    if st.button("🏠 Início", key="nav_inicio"):
+# Função da barra superior
+def mostrar_menu():
+    st.markdown("---")
+    cols = st.columns(4)
+    if cols[0].button("🏠 Início", key="nav_inicio"):
         ir_para("Início")
-with col2:
-    if st.button("📝 Gerenciar Textos", key="nav_textos"):
+    if cols[1].button("📝 Gerenciar Textos", key="nav_textos"):
         ir_para("Textos")
-with col3:
-    if st.button("💼 Planos", key="nav_planos"):
+    if cols[2].button("💼 Planos", key="nav_planos"):
         ir_para("Planos")
-with col4:
-    if st.button("📞 Suporte", key="nav_suporte"):
+    if cols[3].button("📞 Suporte", key="nav_suporte"):
         ir_para("Suporte")
-st.markdown("---")
+    st.markdown("---")
+
+# Mostrar menu
+mostrar_menu()
 
 # CONTEÚDO DAS PÁGINAS
-
 if st.session_state.pagina == "Início":
     st.title("Bem-vindo ao Sistema de Atalhos")
     st.write("Escolha uma das opções abaixo:")
