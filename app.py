@@ -1,45 +1,49 @@
 import streamlit as st
 
-# Dados fixos
-USUARIO_FIXO = "admin"
-SENHA_FIXA = "1234"
-PLANO_ATUAL = "Grátis"
+# Título e barra superior com navegação
+st.set_page_config(page_title="Sistema de Atalhos", layout="wide")
 
-# Inicializar sessão
-if "logado" not in st.session_state:
-    st.session_state.logado = False
+# Inicializar variáveis da sessão
+if "pagina" not in st.session_state:
+    st.session_state.pagina = "Início"
 if "atalhos" not in st.session_state:
     st.session_state.atalhos = {}
 
-# Função de login
-def login():
-    st.title("Início - Login")
-    usuario = st.text_input("Usuário")
-    senha = st.text_input("Senha", type="password")
-    if st.button("Entrar"):
-        if usuario == USUARIO_FIXO and senha == SENHA_FIXA:
-            st.session_state.logado = True
-            st.success("Login bem-sucedido!")
-        else:
-            st.error("Usuário ou senha inválidos")
+# Função para mudar de página
+def ir_para(pagina):
+    st.session_state.pagina = pagina
+    st.experimental_rerun()
 
-# Menu lateral
-st.sidebar.title("Menu")
-menu = st.sidebar.radio(
-    "Navegar:",
-    options=["Início"] + (["Configurar Textos", "Planos"] if st.session_state.logado else []),
-)
+# Barra de navegação superior
+st.markdown("---")
+col1, col2, col3, col4 = st.columns(4)
+with col1:
+    if st.button("🏠 Início"):
+        ir_para("Início")
+with col2:
+    if st.button("📝 Gerenciar Textos"):
+        ir_para("Textos")
+with col3:
+    if st.button("💼 Planos"):
+        ir_para("Planos")
+with col4:
+    if st.button("📞 Suporte"):
+        ir_para("Suporte")
+st.markdown("---")
 
-# Página: Início
-if menu == "Início":
-    if not st.session_state.logado:
-        login()
-    else:
-        st.success("Você já está logado!")
+# PÁGINAS
 
-# Página: Configurar Textos
-elif menu == "Configurar Textos":
-    st.title("Configurar Textos")
+### PÁGINA INICIAL
+if st.session_state.pagina == "Início":
+    st.title("Bem-vindo ao Sistema de Atalhos")
+    st.write("Escolha uma das opções abaixo:")
+    st.button("📝 Gerenciar Textos", on_click=lambda: ir_para("Textos"))
+    st.button("💼 Ver Planos", on_click=lambda: ir_para("Planos"))
+    st.button("📞 Suporte", on_click=lambda: ir_para("Suporte"))
+
+### PÁGINA: GERENCIAR TEXTOS
+elif st.session_state.pagina == "Textos":
+    st.title("Gerenciar Atalhos de Texto")
 
     st.subheader("Atalhos atuais:")
     for tecla, texto in st.session_state.atalhos.items():
@@ -55,14 +59,30 @@ elif menu == "Configurar Textos":
             st.experimental_rerun()
 
     st.subheader("Remover atalho")
-    tecla_remover = st.selectbox("Escolha a tecla", options=list(st.session_state.atalhos.keys()))
-    if st.button("Remover"):
-        del st.session_state.atalhos[tecla_remover]
-        st.success(f"Atalho '{tecla_remover}' removido!")
-        st.experimental_rerun()
+    if st.session_state.atalhos:
+        tecla_remover = st.selectbox("Escolha a tecla", options=list(st.session_state.atalhos.keys()))
+        if st.button("Remover"):
+            del st.session_state.atalhos[tecla_remover]
+            st.success(f"Atalho '{tecla_remover}' removido!")
+            st.experimental_rerun()
+    else:
+        st.warning("Nenhum atalho cadastrado ainda.")
 
-# Página: Planos
-elif menu == "Planos":
+    st.button("🔙 Voltar para o Início", on_click=lambda: ir_para("Início"))
+
+### PÁGINA: PLANOS
+elif st.session_state.pagina == "Planos":
     st.title("Plano Atual")
-    st.info(f"Seu plano: **{PLANO_ATUAL}**")
+    st.info("Seu plano: **Grátis**")
     st.markdown("Em breve: upgrades e mais funcionalidades!")
+
+    st.button("🔙 Voltar para o Início", on_click=lambda: ir_para("Início"))
+
+### PÁGINA: SUPORTE
+elif st.session_state.pagina == "Suporte":
+    st.title("Suporte")
+    st.markdown("Entre em contato conosco:")
+    st.markdown("📧 Email: suporte@example.com")
+    st.markdown("📞 Telefone: (11) 99999-9999")
+
+    st.button("🔙 Voltar para o Início", on_click=lambda: ir_para("Início"))
